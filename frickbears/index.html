@@ -3,14 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>turbowarp</title>
+  <title>TurboWarp</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Pixelify+Sans&display=swap"
+    rel="stylesheet"
+  >
 
   <style>
-    html, body {
-      margin: 0;
+    html,
+    body {
       width: 100%;
       height: 100%;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
+    }
+
+    #loading-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: 'Pixelify Sans', cursive;
+      font-size: 48px;
+      text-align: center;
     }
 
     #game {
@@ -21,12 +40,13 @@
     }
   </style>
 </head>
+
 <body>
-  <div id="content">Loading game...</div>
+  <div id="loading-text">LOADING...</div>
 
   <script>
     async function loadHTMLParts() {
-      const container = document.getElementById('content');
+      const loadingText = document.getElementById('loading-text');
 
       const baseURL =
         'https://cdn.jsdelivr.net/gh/arcade-v/turbowarp/frickbears/';
@@ -40,11 +60,16 @@
         let combinedHTML = '';
 
         for (const part of parts) {
-          const url = baseURL + encodeURIComponent(part);
+          const url = baseURL + part;
+
+          loadingText.textContent =
+            `LOADING PART ${parts.indexOf(part) + 1}/${parts.length}...`;
 
           console.log('Fetching:', url);
 
-          const response = await fetch(url);
+          const response = await fetch(url, {
+            cache: 'no-store'
+          });
 
           if (!response.ok) {
             throw new Error(
@@ -57,26 +82,43 @@
 
         const blob = new Blob(
           [combinedHTML],
-          { type: 'text/html' }
+          { type: 'text/html;charset=utf-8' }
         );
 
         const blobURL = URL.createObjectURL(blob);
 
         const iframe = document.createElement('iframe');
         iframe.id = 'game';
+        iframe.title = 'TurboWarp Game';
         iframe.src = blobURL;
+        iframe.allow = 'autoplay; fullscreen; gamepad';
+        iframe.allowFullscreen = true;
 
-        // Replace the loading message with the game.
-        container.replaceWith(iframe);
-
-        // Release the Blob URL when the iframe is removed.
         iframe.addEventListener('load', () => {
           console.log('Game document loaded.');
         });
 
+        document.body.replaceChildren(iframe);
+
+        const observer = new MutationObserver(() => {
+          if (!iframe.isConnected) {
+            URL.revokeObjectURL(blobURL);
+            observer.disconnect();
+          }
+        });
+
+        observer.observe(document.body, {
+          childList: true
+        });
+
       } catch (error) {
         console.error('Error loading game:', error);
-        container.textContent = 'Failed to load game: ' + error.message;
+
+        loadingText.textContent =
+          'FAILED TO LOAD GAME: ' + error.message;
+
+        loadingText.style.fontSize = '24px';
+        loadingText.style.padding = '20px';
       }
     }
 

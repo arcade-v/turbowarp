@@ -3,14 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>turbowarp's</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Pixelify+Sans&display=swap"
+    rel="stylesheet"
+  >
 
   <style>
-    html, body {
-      margin: 0;
+    html,
+    body {
       width: 100%;
       height: 100%;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
+    }
+
+    #loading-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      color: #fff;
+      font-family: 'Pixelify Sans', cursive;
+      font-size: 48px;
+      text-align: center;
     }
 
     #game {
@@ -21,13 +41,14 @@
     }
   </style>
 </head>
+
 <body>
-  <div id="content">Loading game...</div>
+  <div id="loading-text">LOADING...</div>
 
   <script>
-    async function loadHTMLParts() {
-      const container = document.getElementById('content');
+    const loadingText = document.getElementById('loading-text');
 
+    async function loadHTMLParts() {
       const baseURL =
         'https://cdn.jsdelivr.net/gh/arcade-v/turbowarp/frickbears_2/';
 
@@ -35,17 +56,25 @@
 
       const parts = Array.from(
         { length: 20 },
-        (_, i) => `${filename}.part${String(i + 1).padStart(2, '0')}`
+        (_, i) =>
+          `${filename}.part${String(i + 1).padStart(2, '0')}`
       );
+
       try {
         let combinedHTML = '';
 
-        for (const part of parts) {
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
           const url = baseURL + encodeURIComponent(part);
+
+          loadingText.textContent =
+            `LOADING PART ${i + 1}/${parts.length}...`;
 
           console.log('Fetching:', url);
 
-          const response = await fetch(url);
+          const response = await fetch(url, {
+            cache: 'no-store'
+          });
 
           if (!response.ok) {
             throw new Error(
@@ -56,26 +85,46 @@
           combinedHTML += await response.text();
         }
 
+        loadingText.textContent = 'STARTING GAME...';
+
         const blob = new Blob(
           [combinedHTML],
-          { type: 'text/html' }
+          { type: 'text/html;charset=utf-8' }
         );
 
         const blobURL = URL.createObjectURL(blob);
 
         const iframe = document.createElement('iframe');
         iframe.id = 'game';
+        iframe.title = 'TurboWarp Game';
         iframe.src = blobURL;
-
-        container.replaceWith(iframe);
+        iframe.allow = 'autoplay; fullscreen; gamepad';
+        iframe.allowFullscreen = true;
 
         iframe.addEventListener('load', () => {
           console.log('Game document loaded.');
         });
 
+        document.body.replaceChildren(iframe);
+
+        const observer = new MutationObserver(() => {
+          if (!iframe.isConnected) {
+            URL.revokeObjectURL(blobURL);
+            observer.disconnect();
+          }
+        });
+
+        observer.observe(document.body, {
+          childList: true
+        });
+
       } catch (error) {
         console.error('Error loading game:', error);
-        container.textContent = 'Failed to load game: ' + error.message;
+
+        loadingText.textContent =
+          'FAILED TO LOAD GAME: ' + error.message;
+
+        loadingText.style.fontSize = '24px';
       }
     }
 

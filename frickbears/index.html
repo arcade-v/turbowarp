@@ -1,43 +1,86 @@
-<div id="content"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>turbowarp</title>
 
-<script>
-  async function loadHTMLParts() {
-    const container = document.getElementById('content');
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
 
-    const baseURL = 'https://cdn.jsdelivr.net/gh/arcade-v/turbowarp/frickbears/';
+    #game {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="content">Loading game...</div>
 
-    const parts = [
-      "Five Nights at Frickbear's!.html.part1",
-      "Five Nights at Frickbear's!.html.part2",
-      "Five Nights at Frickbear's!.html.part3",
-      "Five Nights at Frickbear's!.html.part4",
-      "Five Nights at Frickbear's!.html.part5",
-      "Five Nights at Frickbear's!.html.part6",
-      "Five Nights at Frickbear's!.html.part7"
-    ];
+  <script>
+    async function loadHTMLParts() {
+      const container = document.getElementById('content');
 
-    try {
-      let combinedHTML = '';
+      const baseURL =
+        'https://cdn.jsdelivr.net/gh/arcade-v/turbowarp/frickbears/';
 
-      for (const part of parts) {
-        const url = baseURL + encodeURIComponent(part);
-        const response = await fetch(url);
+      const parts = Array.from(
+        { length: 7 },
+        (_, i) => `frickbears.html.part${i + 1}`
+      );
 
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load ${part}: HTTP ${response.status}`
-          );
+      try {
+        let combinedHTML = '';
+
+        for (const part of parts) {
+          const url = baseURL + encodeURIComponent(part);
+
+          console.log('Fetching:', url);
+
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error(
+              `Failed to load ${part}: HTTP ${response.status}`
+            );
+          }
+
+          combinedHTML += await response.text();
         }
 
-        combinedHTML += await response.text();
+        const blob = new Blob(
+          [combinedHTML],
+          { type: 'text/html' }
+        );
+
+        const blobURL = URL.createObjectURL(blob);
+
+        const iframe = document.createElement('iframe');
+        iframe.id = 'game';
+        iframe.src = blobURL;
+
+        // Replace the loading message with the game.
+        container.replaceWith(iframe);
+
+        // Release the Blob URL when the iframe is removed.
+        iframe.addEventListener('load', () => {
+          console.log('Game document loaded.');
+        });
+
+      } catch (error) {
+        console.error('Error loading game:', error);
+        container.textContent = 'Failed to load game: ' + error.message;
       }
-
-      container.innerHTML = combinedHTML;
-    } catch (error) {
-      console.error('Error loading HTML parts:', error);
-      container.textContent = 'Failed to load the HTML file.';
     }
-  }
 
-  loadHTMLParts();
-</script>
+    loadHTMLParts();
+  </script>
+</body>
+</html>
